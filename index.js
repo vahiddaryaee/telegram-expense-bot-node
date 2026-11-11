@@ -409,10 +409,14 @@ async function main() {
     log.warn("deleteWebhook:", e.message || e);
   }
 
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+
   for (let attempt = 1; attempt <= 30; attempt++) {
     try {
-      await bot.launch({ dropPendingUpdates: false });
+      // launch() تا زمان stop resolve نمی‌شود — قبلش لاگ می‌زنیم
       log.info("Application started");
+      await bot.launch({ dropPendingUpdates: false });
       break;
     } catch (e) {
       const m = String(e.message || e);
@@ -424,9 +428,6 @@ async function main() {
       throw e;
     }
   }
-
-  process.once("SIGINT", () => bot.stop("SIGINT"));
-  process.once("SIGTERM", () => bot.stop("SIGTERM"));
 }
 
 main().catch((err) => {

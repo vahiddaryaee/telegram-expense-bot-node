@@ -402,8 +402,28 @@ async function main() {
   });
 
   log.info("شروع long polling…");
-  await bot.launch();
-  log.info("Application started");
+  // پاک کردن webhook احتمالی و تلاش مجدد در صورت 409
+  try {
+    await bot.telegram.deleteWebhook({ drop_pending_updates: false });
+  } catch (e) {
+    log.warn("deleteWebhook:", e.message || e);
+  }
+
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    try {
+      await bot.launch({ dropPendingUpdates: false });
+      log.info("Application started");
+      break;
+    } catch (e) {
+      const m = String(e.message || e);
+      if (/409|Conflict/i.test(m) && attempt < 30) {
+        log.warn(`getUpdates conflict (تلاش ${attempt}/30) — صبر و retry…`);
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
+      }
+      throw e;
+    }
+  }
 
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
